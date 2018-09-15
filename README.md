@@ -16,3 +16,12 @@ Objectives:
       * Station IDs and FIPS
     
   3) Extract station data fitting defined arguments 
+  
+###### Requirements:
+This program requires python 2.7.
+
+*Download => https://www.python.org/download/releases/2.7/
+
+*Adding Paths => https://helpdeskgeek.com/windows-10/add-windows-path-environment-variable/
+
+
