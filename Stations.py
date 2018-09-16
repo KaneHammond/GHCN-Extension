@@ -39,7 +39,7 @@ DataSetID = '?datasetid=%s' % (IDnum)
 
 #^Place at start of argument
 #*Edit Station FIP
-ID = '38035'
+ID = '38'
 
 # Define Location variable (fixed, do not edit)
 Location = '?locationid=FIPS:%s' % (ID)
@@ -49,10 +49,10 @@ Location = '?locationid=FIPS:%s' % (ID)
 
 #^Place at start of argument
 #*Edit North South East West****
-North = 48.3605
-South = 46.7717
-East = -96.4566
-West = -97.7634
+North = 47.899684
+South = 46.665508
+East = -98.735426
+West = -101.735426
 # Define Extent variable (fixed, do not edit)
 Extent = '?extent=%f,%f,%f,%f' % (South, West, North, East)
 
@@ -109,7 +109,7 @@ SortO = '&sortorder=%s' % (SO)
 #********************************LIMIT
 
 #*Edit Variable
-LV = 10
+LV = 500
 
 # Define limit (fixed do not edit)
 Limit = '&limit=%i' % (LV)
@@ -140,13 +140,48 @@ Offset = '&offset=%i' % (OV)
 
 # Argument must start with Location, Extent, or DataSetID due to format.
 
-Arguments = Extent+StartDate+EndDate+Limit+DataType
+Arguments = Location+StartDate+Limit+DataType+Limit
 
 print Arguments
 
 #********************************Define data pull
 url = (url+Endpoint+Arguments)
-print url
+# print url
 response = requests.get(url, headers=headers)
 response = response.json()
-print response
+json_list = response['results']
+
+# Make csv with useable stations. Filters data by date further than request.
+Stations = []
+Record = []
+# Index record for while loop and json_list
+i = 0
+CheckDate = 0
+while i<len(json_list):
+	temp = response['results'][i]['id']
+	Record.append(temp)
+	temp = response['results'][i]['name']
+	Record.append(temp)
+	temp = response['results'][i]['maxdate']
+	var = copy.deepcopy(temp)
+	var = datetime.datetime.strptime(temp, '%Y-%m-%d')
+	if var<(datetime.datetime.strptime('2016-11-01', '%Y-%m-%d')):
+		CheckDate = 1
+	Record.append(temp)
+	temp = response['results'][i]['mindate']
+	var = copy.deepcopy(temp)
+	var = datetime.datetime.strptime(temp, '%Y-%m-%d')
+	if var>(datetime.datetime.strptime('1950-10-01', '%Y-%m-%d')):
+		CheckDate = 1
+	Record.append(temp)
+	if CheckDate<1:
+		Stations.append(Record)
+	Record = []
+	i = i+1
+	CheckDate = 0
+
+with open('Stations.csv', 'wb') as f:
+    writer = csv.writer(f)
+    for aItem in Stations:
+        writer.writerow(aItem)
+

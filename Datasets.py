@@ -72,7 +72,7 @@ SortO = '&sortorder=%s' % (SO)
 #********************************LIMIT
 
 #*Edit Variable
-LV = 20
+LV = 500
 
 # Define limit (fixed do not edit)
 Limit = '&limit=%i' % (LV)
@@ -100,13 +100,20 @@ Offset = '&offset=%i' % (OV)
 
 # Argument must start with Location, Extent, or DataSetID due to format.
 
-Arguments = Station+StartDate+EndDate+Limit+DataType
+Arguments = Station+Limit+DataType
 
 print Arguments
 
 #********************************Define data pull
 url = (url+Endpoint+Arguments)
-print url
+# print url
 response = requests.get(url, headers=headers)
 response = response.json()
-print response
+Results = response['results']
+
+DataSource = []
+for aRow in Results:
+	if aRow['name']=='Daily Summaries':
+		DataSource.append(aRow)
+
+print DataSource

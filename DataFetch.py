@@ -4,13 +4,15 @@ except:
 	import pip
 	pip.main(['install','requests'])
 	import requests
-
+import csv
+import datetime
+import copy
 #### Token
 
 # In order to download data through the NCDC on python, a token code must
 # be requested. The link is: https://www.ncdc.noaa.gov/cdo-web/token
 
-token = 'pwchfVkDdfQBazXlZMFLVcedSVaEieea'
+token = 'NTxIQfIpSLxkbIPKfQtPclpeINiWWzTf'
 headers = {'token': token}
 #### URL link and parameters
 

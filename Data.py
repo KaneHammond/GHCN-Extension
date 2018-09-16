@@ -39,7 +39,7 @@ DataSetID = '?datasetid=%s' % (IDnum)
 ID = '38035'
 
 # Define Location variable (fixed, do not edit)
-Location = '?locationid=FIPS:%s' % (ID)
+Location = '&locationid=FIPS:%s' % (ID)
 
 #********************************Station ID
 #********************************Station ID
@@ -64,9 +64,10 @@ DataType = '&datatypeid='+VariablesDT
 #********************************Time Variables
 #********************************Time Variables
 
+# CANNOT EXCEED 1 YEAR
 #*****Edit Variables
 STime = '1950-01-01'
-ETime = '2018-01-01'
+ETime = '1951-01-01'
 
 # Define Start and End date (fixed, do not edit)
 StartDate = '&startdate='+STime
@@ -126,6 +127,7 @@ Metadata = '&includemetadata=%s' % (MetaArg)
 	# DataType: Can choose specific type of weather, temperature, cloud cover, etc.
 	# StartDate: Date for the beginning of data
 	# EndDate: Date for end of the data
+	# Unit: Pick which units the data returned is in.
 	# SortO: This is for sorting by listing order 
 	# Limit: Sets the maximimum of allowable returned records
 	# Offset: Define which record (by index) to begin with
@@ -133,14 +135,21 @@ Metadata = '&includemetadata=%s' % (MetaArg)
 
 # Argument must start with Location, Extent, or DataSetID due to format.
 
-Arguments = DataSetID+StartDate+EndDate
+Arguments = DataSetID+Location+StartDate+EndDate+Unit
 
 # print Arguments
 
 #********************************Define data pull
 url = (url+Endpoint+Arguments)
-print url
 response = requests.get(url, headers=headers)
-print response
+
+# print response.status_code
+# print response.text
+
 response = response.json()
-print response
+
+Results = response['results']
+
+
+
+
