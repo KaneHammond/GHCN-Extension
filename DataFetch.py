@@ -10,7 +10,7 @@ except:
 # In order to download data through the NCDC on python, a token code must
 # be requested. The link is: https://www.ncdc.noaa.gov/cdo-web/token
 
-token = 'NTxIQfIpSLxkbIPKfQtPclpeINiWWzTf'
+token = 'pwchfVkDdfQBazXlZMFLVcedSVaEieea'
 headers = {'token': token}
 #### URL link and parameters
 
@@ -116,9 +116,9 @@ url = "https://www.ncdc.noaa.gov/cdo-web/api/v2"
 # from Stations import*
 
 # Datasets parameters */datasets*
-import Datasets
-Datasets
-from Datasets import*
+# import Datasets
+# Datasets
+# from Datasets import*
 
 # Data parameters */data*
 import Data
