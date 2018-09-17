@@ -93,7 +93,7 @@ SortO = '&sortorder=%s' % (SO)
 #********************************LIMIT
 
 #*Edit Variable
-LV = 20
+LV = 1000
 
 # Define limit (fixed do not edit)
 Limit = '&limit=%i' % (LV)
@@ -133,11 +133,12 @@ Metadata = '&includemetadata=%s' % (MetaArg)
 
 # Argument must start with Location, Extent, or DataSetID due to format.
 
-Arguments = DataSetID+Station+StartDate+EndDate+Unit+Limit
+# Arguments = DataSetID+Station+StartDate+EndDate+Unit+Limit
 
 # print Arguments
 
 #********************************Define data pull
+
 
 # url = (url+Endpoint+Arguments)
 # response = requests.get(url, headers=headers)
@@ -155,41 +156,67 @@ TMAX = []
 TMIN = []
 SNOW = []
 temp = []
+Date = datetime.datetime.strptime('1/1/1893', '%m/%d/%Y')
 i = 0
-
-while i<=10:
-	if i==0:
+Lim = 0
+Break = 0
+while Break==0:
+	if Lim==i:
+		print 'open'
+		Arguments = DataSetID+Station+StartDate+EndDate+Unit+Limit
 		url = (url+Endpoint+Arguments)
 		response = requests.get(url, headers=headers)
-		response = response.json()	
+		response = response.json()
+		# print response.text
+		# print response.status_code	
 		Results = response['results']
+		OV = OV+1000
+		Offset = '&offset=%i' % (OV)
+		Lim = Lim+1000
+		# Need to increase each time this is looped
+		STime = '1950-01-01'
+		ETime = '1951-01-01'
+		StartDate = '&startdate='+STime
+		EndDate = '&enddate='+ETime
+		print 'pass'
 	for aRow in Results:
 		if aRow['datatype']=='PRCP':
-			print aRow
 			temp.append(aRow['value'])
 			temp.append(aRow['date'])
 			PRCP.append(temp)
+			# temp = []
+			# i = i+1
 		if aRow['datatype']=='TOBS':
 			temp.append(aRow['value'])
 			temp.append(aRow['date'])
-			TOBS.append(temp)			
+			TOBS.append(temp)
+			# temp = []
+			# i = i+1		
 		if aRow['datatype']=='SNOW':
 			temp.append(aRow['value'])
 			temp.append(aRow['date'])
 			SNOW.append(temp)
+			# temp = []
+			# i = i+1
 		if aRow['datatype']=='TMAX':
 			temp.append(aRow['value'])
 			temp.append(aRow['date'])
 			TMAX.append(temp)
+			# temp = []
+			# i = i+1
 		if aRow['datatype']=='TMIN':
 			temp.append(aRow['value'])
 			temp.append(aRow['date'])
 			TMIN.append(temp)
-		i = i+1
+		Date = aRow['date']
 		temp = []
+		i = i+1
+		if Date==FinalDate:
+			Break = 1
+			break
 
 print i
-print TMAX
+print len(TMIN)
 print len(TMAX)
 print len(SNOW)
 print len(PRCP)
