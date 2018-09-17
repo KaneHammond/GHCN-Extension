@@ -23,7 +23,7 @@ Endpoint = '/data'
 #*******************************Dataset ID
 #*******************************Dataset ID
 
-#^Place at start of argument
+#^Place at start of argument. Base argument requires this.
 #*Edit station id (first part of code only)
 IDnum = 'GHCND'
 # Note*** GHCND:USC00323117 (single station) only works in Data endpoint
@@ -34,7 +34,6 @@ DataSetID = '?datasetid=%s' % (IDnum)
 #********************************Location ID Number
 #********************************Location ID Number
 
-#^Place at start of argument
 #*Edit Station FIP
 ID = '38035'
 
@@ -44,12 +43,11 @@ Location = '&locationid=FIPS:%s' % (ID)
 #********************************Station ID
 #********************************Station ID
 
-#^Place at start of argument
 #*Edit Station ID
 SI = 'GHCND:USC00323117'
 
 # Define station ID variable fixed, do not edit)
-Station = '?stationid=%s' % (SI)
+Station = '&stationid=%s' % (SI)
 
 #********************************Data Type ID
 #********************************Data Type ID
@@ -135,21 +133,64 @@ Metadata = '&includemetadata=%s' % (MetaArg)
 
 # Argument must start with Location, Extent, or DataSetID due to format.
 
-Arguments = DataSetID+Location+StartDate+EndDate+Unit
+Arguments = DataSetID+Station+StartDate+EndDate+Unit+Limit
 
 # print Arguments
 
 #********************************Define data pull
-url = (url+Endpoint+Arguments)
-response = requests.get(url, headers=headers)
 
+# url = (url+Endpoint+Arguments)
+# response = requests.get(url, headers=headers)
 # print response.status_code
 # print response.text
+# response = response.json()
+# Results = response['results']
 
-response = response.json()
+# print Results
+FinalDate = datetime.datetime.strptime('7/31/2018', '%m/%d/%Y')
 
-Results = response['results']
+PRCP = []
+TOBS = []
+TMAX = []
+TMIN = []
+SNOW = []
+temp = []
+i = 0
 
+while i<=10:
+	if i==0:
+		url = (url+Endpoint+Arguments)
+		response = requests.get(url, headers=headers)
+		response = response.json()	
+		Results = response['results']
+	for aRow in Results:
+		if aRow['datatype']=='PRCP':
+			print aRow
+			temp.append(aRow['value'])
+			temp.append(aRow['date'])
+			PRCP.append(temp)
+		if aRow['datatype']=='TOBS':
+			temp.append(aRow['value'])
+			temp.append(aRow['date'])
+			TOBS.append(temp)			
+		if aRow['datatype']=='SNOW':
+			temp.append(aRow['value'])
+			temp.append(aRow['date'])
+			SNOW.append(temp)
+		if aRow['datatype']=='TMAX':
+			temp.append(aRow['value'])
+			temp.append(aRow['date'])
+			TMAX.append(temp)
+		if aRow['datatype']=='TMIN':
+			temp.append(aRow['value'])
+			temp.append(aRow['date'])
+			TMIN.append(temp)
+		i = i+1
+		temp = []
 
-
-
+print i
+print TMAX
+print len(TMAX)
+print len(SNOW)
+print len(PRCP)
+print len(TOBS)
