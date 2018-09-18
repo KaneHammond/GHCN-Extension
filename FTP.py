@@ -32,30 +32,38 @@ ftp.cwd('/pub/data/ghcn/daily/all/')
 
 def grabFile():
 	FileName = 'USC00323117.csv'
-	localfile = open(FileName, 'wb')
-	# s = io.BytesIO()
+	# localfile = open(FileName, 'wb')
+	s = io.BytesIO()
 	# ftp.retrbinary('RETR ' + 'USC00323117.dly', s.write, 1024)
-	ftp.retrbinary('RETR ' + 'USC00323117.dly', localfile.write, 1024)
- 	# File params
+	# ftp.retrbinary('RETR ' + 'USC00323117.dly', localfile.write, 1024)
+	# data = []
+	ftp.retrbinary('RETR ' + 'USC00323117.dly', s.write, 1024)
+	print s
+ 	# ftp.retrlines("NLST", data.append)
+
 
 grabFile()
 
-inFile = open('USC00323117.csv', mode='rU')
-theCsvData = csv.reader(inFile)
-allData = []
+# print data
 
-for aRow in theCsvData:
-	allData.append(aRow)
-inFile.close()
+# inFile = open('USC00323117.csv', mode='rU')
+# theCsvData = csv.reader(inFile)
+# allData = []
 
-for aRow in allData:
-	# print aRow
-	temp = copy.deepcopy(aRow)
-	# break
-	temp = temp.replace(" ", "-")
-	break
-print temp
-print allData[0]
+# for aRow in theCsvData:
+# 	allData.append(aRow)
+# inFile.close()
+
+# for aRow in allData:
+# 	# print aRow
+# 	temp = copy.deepcopy(aRow)
+# 	# break
+# 	temp = temp.replace(" ", "-")
+# 	break
+# print temp
+# print allData[0]
+
+
 # outfile = open('USC00323117_2.csv', mode='wb')
 # csv_f = csv.reader(infile)
 # writer = csv.writer(outfile)
