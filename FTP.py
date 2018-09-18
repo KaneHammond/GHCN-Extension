@@ -1,3 +1,8 @@
+
+# Will define stations pulled from API and loop through this section.
+# This section 
+
+
 import pandas as pd
 from ftplib import FTP
 from io import StringIO
@@ -195,5 +200,5 @@ for aRow in theCsvData:   #This takes the information read from the cvs and crea
   allData.append(aRow[:])
 print len(allData)
 
-
+# Len should be somewhere around 25,000. Since this is daily data for about 70 years.
 
