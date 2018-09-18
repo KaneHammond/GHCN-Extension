@@ -1,85 +1,199 @@
+import pandas as pd
 from ftplib import FTP
-
-try:
-    import itertools
-except:
-    import pip
-    pip.main(['install','itertools'])
-    import itertools
-
+from io import StringIO
+import os
 import io
-import copy
 import csv
-# ftp_path_dly_all = 'ftp.ncdc.noaa.gov'
 
-# def connect_to_ftp():
-#     """
-#     Get FTP server and file details
-#     """
-#     ftp_path_root = 'ftp.ncdc.noaa.gov'
-#     # Access NOAA FTP server
-#     ftp = FTP(ftp_path_root)
-#     message = ftp.login()  # No credentials needed
-#     print(message)
-#     return ftp
+output_dir = os.path.relpath('output')
+if not os.path.isdir(output_dir):
+    os.mkdir(output_dir)
 
-ftp = FTP('ftp.ncdc.noaa.gov')
-message = ftp.login()
-# print message
-# return ftp
-ftp.cwd('/pub/data/ghcn/daily/all/')
+ftp_path_dly_all = '/pub/data/ghcn/daily/all/'
 
+def connect_to_ftp():
+    """
+    Get FTP server and file details
+    """
+    ftp_path_root = 'ftp.ncdc.noaa.gov'
+    # Access NOAA FTP server
+    ftp = FTP(ftp_path_root)
+    message = ftp.login()  # No credentials needed
+    print(message)
+    return ftp
 
-def grabFile():
-	FileName = 'USC00323117.csv'
-	# localfile = open(FileName, 'wb')
-	s = io.BytesIO()
-	# ftp.retrbinary('RETR ' + 'USC00323117.dly', s.write, 1024)
-	# ftp.retrbinary('RETR ' + 'USC00323117.dly', localfile.write, 1024)
-	# data = []
-	ftp.retrbinary('RETR ' + 'USC00323117.dly', s.write, 1024)
-	print s
- 	# ftp.retrlines("NLST", data.append)
+def get_flags(s):
+    """
+    Get flags, replacing empty flags with '_' for clarity (' S ' becomes '_S_')
+    """
+    m_flag = s.read(1)
+    m_flag = m_flag if m_flag.strip() else '_'
+    q_flag = s.read(1)
+    q_flag = q_flag if q_flag.strip() else '_'
+    s_flag = s.read(1)
+    s_flag = s_flag if s_flag.strip() else '_'
+    return [m_flag + q_flag + s_flag]
 
+def create_dataframe(element, dict_element):
+    """
+    Make dataframes out of the dicts, make the indices date strings (YYYY-MM-DD)
+    """
+    # element = element.upper()
+    df_element = pd.DataFrame(dict_element)
+    # print df_element
 
-grabFile()
+    # Separate dfs' pass this point containing data for full record.
+    # Need to filter out unwanted data to ensure final output is complete.
 
-# print data
+    # Add dates (YYYY-MM-DD) as index on df. Pad days with zeros to two places
+    df_element.index = df_element['YEAR'] + '-' + df_element['MONTH'] + '-' + df_element['DAY'].str.zfill(2)
+    df_element.index.name = 'DATE'
+    # Arrange columns so ID, YEAR, MONTH, DAY are at front. Leaving them in for plotting later - https://stackoverflow.com/a/31396042
+    for col in ['DAY', 'MONTH', 'YEAR', 'ID']:
+        df_element = move_col_to_front(col, df_element)
+    # Convert numerical values to float
+    df_element.loc[:,element] = df_element.loc[:,element].astype(float)
+    return df_element
+    
+def move_col_to_front(element, df):
+    element = element.upper()
+    cols = df.columns.tolist()
+    cols.insert(0, cols.pop(cols.index(element)))
+    df = df.reindex(columns=cols)
+    return df
 
-# inFile = open('USC00323117.csv', mode='rU')
-# theCsvData = csv.reader(inFile)
-# allData = []
+def dly_to_csv(ftp, station_id):    
+    ftp_filename = station_id + '.dly'
+    
+    # Write .dly file to stream using StringIO using FTP command 'RETR'
+    s = io.BytesIO()
+    ftp.retrlines('RETR ' + ftp_path_dly_all + ftp_filename, s.write)
+    s.seek(0)
+    
+    # Write .dly file to dir to preserve original # FIXME make optional?
+    with open(os.path.join(output_dir, ftp_filename), 'wb+') as f:
+        ftp.retrbinary('RETR ' + ftp_path_dly_all + ftp_filename, f.write)
+    
+    # Move to first char in file
+    s.seek(0)
+    
+    # File params
+    num_chars_line = 269
+    num_chars_metadata = 21
 
-# for aRow in theCsvData:
-# 	allData.append(aRow)
-# inFile.close()
+    element_list = ['PRCP', 'SNOW', 'SNWD', 'TMAX', 'TMIN']
+    
+    '''
+    Read through entire StringIO stream (the .dly file) and collect the data
+    '''
+    all_dicts = {}
+    element_flag = {}
+    prev_year = '0000'
+    i = 0
+    while True:
+        i += 1
+        
+        '''
+        Read metadata for each line (one month of data for a particular element per line)
+        '''
+        id_station = s.read(11)
+        year = s.read(4)
+        month = s.read(2)
+        day = 0
+        element = s.read(4)
+        
+        # If this is blank then we've reached EOF and should exit loop
+        if not element:
+            break
+        
+        '''
+        Print status
+        '''
+        if year != prev_year:
+            print('Year {} | Line {}'.format(year, i))
+            prev_year = year
+        
+        '''
+        Loop through each day in rest of row, break if current position is end of row
+        '''
+        while s.tell() % num_chars_line != 0:
+            day += 1
+            # Fill in contents of each dict depending on element type in current row
+            if day == 1:
+                try:
+                    first_hit = element_flag[element]
+                except:
+                    element_flag[element] = 1
+                    all_dicts[element] = {}
+                    all_dicts[element]['ID'] = []
+                    all_dicts[element]['YEAR'] = []
+                    all_dicts[element]['MONTH'] = []
+                    all_dicts[element]['DAY'] = []
+                    all_dicts[element][element.upper()] = []
+                    # all_dicts[element][element.upper() + '_FLAGS'] = []
+                
+            value = s.read(5)
+            flags = get_flags(s)
+            if value == '-9999':
+                continue
+            all_dicts[element]['ID'] += [station_id] 
+            all_dicts[element]['YEAR'] += [year]
+            all_dicts[element]['MONTH'] += [month]
+            all_dicts[element]['DAY'] += [str(day)]
+            all_dicts[element][element.upper()] += [value]
+            # all_dicts[element][element.upper() + '_FLAGS'] += flags
+            
+    '''
+    Create dataframes from dict
+    '''
 
-# for aRow in allData:
-# 	# print aRow
-# 	temp = copy.deepcopy(aRow)
-# 	# break
-# 	temp = temp.replace(" ", "-")
-# 	break
-# print temp
-# print allData[0]
+    all_dfs = {}
+    for element in list(all_dicts.keys()):
+        all_dfs[element] = create_dataframe(element, all_dicts[element])
+    # print all_dicts.keys()
+    
+    '''
+    Combine all element dataframes into one dataframe, indexed on date. 
+    '''
+    # pd.concat automagically aligns values to matching indices, therefore the data is date aligned!
+    list_dfs = []
+    for df in list(all_dfs.keys()):
+        list_dfs += [all_dfs[df]]
+    df_all = pd.concat(list_dfs, axis=1, sort='True')
+    df_all.index.name = 'MM/DD/YYYY'
+    
+    '''
+    Remove duplicated/broken columns and rows
+    '''
+    # https://stackoverflow.com/a/40435354
+    df_all = df_all.loc[:,~df_all.columns.duplicated()]
+    df_all = df_all.loc[df_all['ID'].notnull(), :]
+    # print df_all # Missing Data at this point
+    
+    '''
+    Output to CSV, convert everything to strings first
+    '''
+    # NOTE: To open the CSV in Excel, go through the CSV import wizard, otherwise it will come out broken
+    df_out = df_all.astype(str)
+    df_out.to_csv(os.path.join(output_dir, station_id + '.csv'))
+    print('\nOutput CSV saved to: {}'.format(os.path.join(output_dir, station_id + '.csv')))
+    
+'''
+Main
+'''
+if __name__ == '__main__':
+    station_id = 'USW00014916'
+    ftp = connect_to_ftp()
+    dly_to_csv(ftp, station_id)
+    ftp.quit()
 
+inFile = open('output/USW00014916.csv', 'r')
+theCsvData = csv.reader(inFile) #this creates a special object that the csv library knows how to access
+allData=[]
 
-# outfile = open('USC00323117_2.csv', mode='wb')
-# csv_f = csv.reader(infile)
-# writer = csv.writer(outfile)
-# next(csv_f)  # skip headers
-# row = next(csv_f)
-#     # row looks like
-#     # ['one', 'two', 'three four', 'five', ...]
-
-# rewritten_row = itertools.chain.from_iterable(
-#     [cell.split() for cell in row])  # or map(str.split, row)
-#     # rewritten_row looks like
-#     # ['one', 'two', 'three', 'four', 'five', ...]
-# for aItem in rewritten_row:
-# 	print aItem
-# # writer.writerow(rewritten_row)
-
+for aRow in theCsvData:   #This takes the information read from the cvs and creates an index from it
+  allData.append(aRow[:])
+print len(allData)
 
 
 
