@@ -28,11 +28,11 @@ This program requires python 2.7.
 
 DataFetch.py: Primary file for running other API modules.
 
-  Datasets.py: Module of DataFetch.py, used for searching for specific data sets through API.
+  * Datasets.py: Module of DataFetch.py, used for searching for specific data sets through API.
   
-  Stations.py: Module of DataFetch.py, used for searching for stations through API.
+  * Stations.py: Module of DataFetch.py, used for searching for stations through API.
   
-  Data.py: Module of DataFetch.py, used for searching for data, via link provided by either Datasets.py or Stations.py.
+  * Data.py: Module of DataFetch.py, used for searching for data, via link provided by either Datasets.py or Stations.py. Only useful   for downloading datasets less than a year in length.
   
 FTP.py: Currently a solo file. Will be linked with DataFetch.py as a module once working. FTP server is desired over API, larger sets of data can be downloaded at once. The original API modules are useful for filtering stations available on the server.
   
