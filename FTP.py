@@ -9,6 +9,7 @@ from io import StringIO
 import os
 import io
 import csv
+import copy
 
 output_dir = os.path.relpath('output')
 if not os.path.isdir(output_dir):
@@ -24,7 +25,7 @@ def connect_to_ftp():
     # Access NOAA FTP server
     ftp = FTP(ftp_path_root)
     message = ftp.login()  # No credentials needed
-    print(message)
+    # print(message)
     return ftp
 
 def get_flags(s):
@@ -58,6 +59,7 @@ def create_dataframe(element, dict_element):
         df_element = move_col_to_front(col, df_element)
     # Convert numerical values to float
     df_element.loc[:,element] = df_element.loc[:,element].astype(float)
+    # print df_element
     return df_element
     
 def move_col_to_front(element, df):
@@ -81,7 +83,6 @@ def dly_to_csv(ftp, station_id):
     
     # Move to first char in file
     s.seek(0)
-    
     # File params
     num_chars_line = 269
     num_chars_metadata = 21
@@ -115,7 +116,7 @@ def dly_to_csv(ftp, station_id):
         Print status
         '''
         if year != prev_year:
-            print('Year {} | Line {}'.format(year, i))
+            # print('Year {} | Line {}'.format(year, i))
             prev_year = year
         
         '''
@@ -135,7 +136,7 @@ def dly_to_csv(ftp, station_id):
                     all_dicts[element]['MONTH'] = []
                     all_dicts[element]['DAY'] = []
                     all_dicts[element][element.upper()] = []
-                    # all_dicts[element][element.upper() + '_FLAGS'] = []
+                    all_dicts[element][element.upper() + '_FLAGS'] = []
                 
             value = s.read(5)
             flags = get_flags(s)
@@ -146,16 +147,24 @@ def dly_to_csv(ftp, station_id):
             all_dicts[element]['MONTH'] += [month]
             all_dicts[element]['DAY'] += [str(day)]
             all_dicts[element][element.upper()] += [value]
-            # all_dicts[element][element.upper() + '_FLAGS'] += flags
+            all_dicts[element][element.upper() + '_FLAGS'] += flags
             
     '''
     Create dataframes from dict
     '''
 
+    #* NOTE: all_dicts are values
+    # print all_dicts
+
+    #* NOTE: all_dicts.keys() are all element types
+    # print all_dicts.keys()
+
     all_dfs = {}
     for element in list(all_dicts.keys()):
         all_dfs[element] = create_dataframe(element, all_dicts[element])
-    # print all_dicts.keys()
+
+    # print all_dfs
+    #* NOTE: Data is still shown here
     
     '''
     Combine all element dataframes into one dataframe, indexed on date. 
@@ -165,16 +174,18 @@ def dly_to_csv(ftp, station_id):
     for df in list(all_dfs.keys()):
         list_dfs += [all_dfs[df]]
     df_all = pd.concat(list_dfs, axis=1, sort='True')
-    df_all.index.name = 'MM/DD/YYYY'
+    # df_all.index.name = 'DATE'
     
+    # print df_all
     '''
     Remove duplicated/broken columns and rows
     '''
     # https://stackoverflow.com/a/40435354
     df_all = df_all.loc[:,~df_all.columns.duplicated()]
-    df_all = df_all.loc[df_all['ID'].notnull(), :]
-    # print df_all # Missing Data at this point
-    
+    # df_all = df_all.loc[df_all['ID'].notnull(), :]
+    # df1 = df_all[[index,'SNOW']]
+    # print df1 # Missing Data at this point .notnull(), :
+    # print df_all['SNOW']
     '''
     Output to CSV, convert everything to strings first
     '''
@@ -187,12 +198,12 @@ def dly_to_csv(ftp, station_id):
 Main
 '''
 if __name__ == '__main__':
-    station_id = 'USW00014916'
+    station_id = 'USC00323117'
     ftp = connect_to_ftp()
     dly_to_csv(ftp, station_id)
     ftp.quit()
 
-inFile = open('output/USW00014916.csv', 'r')
+inFile = open('output/USC00323117.csv', 'r')
 theCsvData = csv.reader(inFile) #this creates a special object that the csv library knows how to access
 allData=[]
 
@@ -202,3 +213,30 @@ print len(allData)
 
 # Len should be somewhere around 25,000. Since this is daily data for about 70 years.
 
+
+
+# ftp_path_root = 'ftp.ncdc.noaa.gov'
+# # Access NOAA FTP server
+# ftp = FTP(ftp_path_root)
+# message = ftp.login()  # No credentials needed
+# print(message)
+
+
+# # print Test
+# station_id = 'USW00014916'
+# ftp_filename = station_id + '.dly'
+
+# # Write .dly file to stream using StringIO using FTP command 'RETR'
+# s = io.BytesIO()
+# ftp.retrlines('RETR ' + ftp_path_dly_all + ftp_filename, s.write)
+# s.seek(0)
+
+# # Write .dly file to dir to preserve original # FIXME make optional?
+# with open(os.path.join(output_dir, ftp_filename), 'wb+') as f:
+#     ftp.retrbinary('RETR ' + ftp_path_dly_all + ftp_filename, f.write)
+
+# # Move to first char in file
+# s.seek(0)
+# Test = copy.deepcopy(s)
+
+# print Test
