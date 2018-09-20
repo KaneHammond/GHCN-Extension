@@ -1,19 +1,9 @@
 
 # Will define stations pulled from API and loop through this section.
-# This section 
 
+from DataFetch import*
+from Stations import*
 
-import pandas as pd
-from ftplib import FTP
-from io import StringIO
-import os
-import io
-import csv
-import copy
-
-output_dir = os.path.relpath('output')
-if not os.path.isdir(output_dir):
-    os.mkdir(output_dir)
 
 ftp_path_dly_all = '/pub/data/ghcn/daily/all/'
 
@@ -182,10 +172,7 @@ def dly_to_csv(ftp, station_id):
     '''
     # https://stackoverflow.com/a/40435354
     df_all = df_all.loc[:,~df_all.columns.duplicated()]
-    # df_all = df_all.loc[df_all['ID'].notnull(), :]
-    # df1 = df_all[[index,'SNOW']]
-    # print df1 # Missing Data at this point .notnull(), :
-    # print df_all['SNOW']
+
     '''
     Output to CSV, convert everything to strings first
     '''
@@ -197,46 +184,35 @@ def dly_to_csv(ftp, station_id):
 '''
 Main
 '''
-if __name__ == '__main__':
-    station_id = 'USC00323117'
+
+inFile = open('Retrieve_Files/output/Stations.csv', 'r')
+theCsvData = csv.reader(inFile) #this creates a special object that the csv library knows how to access
+allData=[]
+
+#This takes the information read from the cvs and creates an index from it
+for aRow in theCsvData:
+  allData.append(aRow[:])
+
+# Write list for station ids
+stations = []
+# Split dataset id and station id, keep station id ([-1])
+for aRow in allData:
+    temp = str(aRow[-4])
+    new = temp.split(':', 1)[-1]
+    stations.append(new)
+
+
+for aRow in stations:
+    station_id=aRow
+    print station_id
     ftp = connect_to_ftp()
     dly_to_csv(ftp, station_id)
     ftp.quit()
 
-inFile = open('output/USC00323117.csv', 'r')
-theCsvData = csv.reader(inFile) #this creates a special object that the csv library knows how to access
-allData=[]
+# inFile = open('output/USC00323117.csv', 'r')
+# theCsvData = csv.reader(inFile) #this creates a special object that the csv library knows how to access
+# allData=[]
 
-for aRow in theCsvData:   #This takes the information read from the cvs and creates an index from it
-  allData.append(aRow[:])
-print len(allData)
-
-# Len should be somewhere around 25,000. Since this is daily data for about 70 years.
-
-
-
-# ftp_path_root = 'ftp.ncdc.noaa.gov'
-# # Access NOAA FTP server
-# ftp = FTP(ftp_path_root)
-# message = ftp.login()  # No credentials needed
-# print(message)
-
-
-# # print Test
-# station_id = 'USW00014916'
-# ftp_filename = station_id + '.dly'
-
-# # Write .dly file to stream using StringIO using FTP command 'RETR'
-# s = io.BytesIO()
-# ftp.retrlines('RETR ' + ftp_path_dly_all + ftp_filename, s.write)
-# s.seek(0)
-
-# # Write .dly file to dir to preserve original # FIXME make optional?
-# with open(os.path.join(output_dir, ftp_filename), 'wb+') as f:
-#     ftp.retrbinary('RETR ' + ftp_path_dly_all + ftp_filename, f.write)
-
-# # Move to first char in file
-# s.seek(0)
-# Test = copy.deepcopy(s)
-
-# print Test
+# for aRow in theCsvData:   #This takes the information read from the cvs and creates an index from it
+#   allData.append(aRow[:])
+# print len(allData)
