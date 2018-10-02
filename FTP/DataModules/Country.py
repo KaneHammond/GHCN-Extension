@@ -339,7 +339,7 @@ for aItem in query:
         sys.exit()
 
 output_dir = os.path.relpath('Output/Country/')
-# WORK
+
 dfS = df[df.STATION_ID.isin(StationFilter2)]
 dfS = dfS.drop_duplicates('STATION_ID')
 dfS = dfS.drop(columns=['ELEMENT', 'FIRSTYEAR', 'LASTYEAR'])
