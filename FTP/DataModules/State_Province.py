@@ -7,10 +7,25 @@ from ftplib import FTP
 import csv
 import io
 import numpy as np
-sys.path.append("output")
+try:
+    import tqdm
+except:
+    import pip
+    pip.main(['install','tqdm'])
+    import tqdm
+import copy
+
+sys.path.append("Output")
+sys.path.append("TXT_FILES")
 
 # Write output directory
-output_dir = os.path.relpath('output/State_Province')
+output_dir = os.path.relpath('Output')
+if not os.path.isdir(output_dir):
+    os.mkdir(output_dir)
+output_dir = os.path.relpath('Output/State_Province')
+if not os.path.isdir(output_dir):
+    os.mkdir(output_dir)
+output_dir = os.path.relpath('TXT_FILES')
 if not os.path.isdir(output_dir):
     os.mkdir(output_dir)
 
@@ -19,10 +34,73 @@ def print_full(x):
     pd.set_option('display.max_rows', len(x))
     print(x)
     pd.reset_option('display.max_rows')
+# Definition for printing full dataframe
+
+#************************************Station list for state selection
+
+ftp_path_dly = '/pub/data/ghcn/daily/'
+ftp_path_dly_all = '/pub/data/ghcn/daily/all/'
+local_full_path = 'TXT_FILES/ghcnd-stations.txt'
+
+def StationStates(ftp):
+    print ('Building Station DataFrame...\n')    
+    ftp_filename = 'ghcnd-stations.txt'
+
+    ftp_full_path = os.path.join(ftp_path_dly, ftp_filename)
+    local_full_path = os.path.join(output_dir, ftp_filename)
+    if not os.path.isfile(local_full_path):
+        with open(local_full_path, 'wb+') as f:
+            ftp.retrbinary('RETR ' + ftp_full_path, f.write)
+
+# ------------------------------
+# Variable   Columns   Type
+# ------------------------------
+# ID            1-11   Character (FIRST 2 CHAR IS COUNTRY)
+# LATITUDE     13-20   Real
+# LONGITUDE    22-30   Real
+# ELEVATION    32-37   Real
+# STATE        39-40   Character (ONLY CA US)
+# NAME         42-71   Character
+# GSN FLAG     73-75   Character
+# HCN/CRN FLAG 77-79   Character
+# WMO ID       81-85   Character
+# ------------------------------
+    dtype = {'STATION_ID': str,
+             'LATITUDE': str,
+             'LONGITUDE': str,
+             'ELEVATION': str,
+             'STATE': str,
+             'STATION_NAME': str,
+             'GSN_FLAG': str,
+             'HCN_CRN_FLAG': str,
+             'WMO_ID': str}
+    names = ['STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'STATE', 'STATION_NAME', 'GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID']
+    widths = [11,    # STATION ID
+              9,   # Latitude (decimal degrees)
+              10,  # Longitude (decimal degrees)
+              7,   # Elevation (meters)
+              3,   # State (USA stations only)
+              31,  # Station Name
+              4,   # GSN Flag
+              4,   # HCN/CRN Flag
+              6]   # WMO ID
+    df = pd.read_fwf(local_full_path, widths=widths, names=names, dtype=dtype, header=None)
+    
+    df2  = df.loc[df['STATE'].isin(SP)]
+    CC = []
+    for aItem in df2['STATION_ID']:
+        CC.append(aItem[0:2])
+    df2.insert(0, 'COUNTRY_CODE', value=CC)
+    df2 = df2.values.tolist()
+    for aItem in df2:
+        dfS.append(aItem)
+    return dfS
+
+
 #************************************ DATA COVERAGE CHECK FTP
 ftp_path_dly = '/pub/data/ghcn/daily/'
 ftp_path_dly_all = '/pub/data/ghcn/daily/all/'
-local_full_path = 'output/State_Province/ghcnd-inventory.txt'
+local_full_path = 'TXT_FILES/ghcnd-inventory.txt'
 
 # This ftp definition is the first one to run, this is defined here and 
 # later. The reason is to run it whith the login message once. The second
@@ -81,12 +159,16 @@ def Inventory(ftp):
     df.insert(0, 'COUNTRY_CODE', value=CC)
     # Define list of stations from Country selection
     # to be entered into a list for data download
-    # WORK HERE
-    df = df[df.COUNTRY_CODE.isin(SP)]
+    df2 = pd.DataFrame(dfS, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'STATE', 'STATION_NAME', 'GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID'])
+    # print df2
+    # Return df matching station IDs
+    df = df[df.STATION_ID.isin(df2['STATION_ID'])]
+    # Return a df containing state information for each station for later use
     df = df.values.tolist()
     for aItem in df:
         Filter.append(aItem)
     return Filter
+
 
 
 # ftp = connect_to_ftp()
@@ -98,7 +180,7 @@ def Inventory(ftp):
 
 ftp_path_dly = '/pub/data/ghcn/daily/'
 ftp_filename = 'ghcnd-states.txt'
-local_full_path = 'output/State_Province/ghcnd-states.txt'
+local_full_path = 'TXT_FILES/ghcnd-states.txt'
 
 # Connects to the server for ftp download. This def prints the 
 # ftp connection message/warning.
@@ -184,10 +266,18 @@ def State_Province(ftp):
             sys.exit()
 
 # Run main functions, sets up data for download and individual parsing.
+# Final section downloads data.
 Filter = []
+# SP is list for state and province codes from slection
 SP = []
+# List for station download after filter
+Stations = []
+# List for identifying stations based on STATE codes, other 
+# list imports only include country code.  
+dfS = []
 ftp = connect_to_ftp()
 State_Province(ftp)
+StationStates(ftp)
 Inventory(ftp)
 
 # Filter through start dates, selecting start dates that are at least
@@ -259,18 +349,20 @@ if len(Filter2)>0 and len(Filter)>0:
 # two lists were used to filter records. Since some sections are optional,
 # either list may be the correct list to write a dataframe from.
 if len(Filter)>0:
-    df = pd.DataFrame(Filter, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEMENT', 'FIRSTYEAR', 'LASTYEAR'])
+    dfF = pd.DataFrame(Filter, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEMENT', 'FIRSTYEAR', 'LASTYEAR'])
 
 if len(Filter2)>0:
-    df = pd.DataFrame(Filter2, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEMENT', 'FIRSTYEAR', 'LASTYEAR'])
+    dfF = pd.DataFrame(Filter2, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEMENT', 'FIRSTYEAR', 'LASTYEAR'])
+
+# print_full(dfF)
 
 # This section prepares for selection of elements (coverage types) over
 # the list of returned stations. The elements present do not mean each
 # station has the full coverage. It is simply a list of what is present.
 
-Elements = df.ELEMENT.unique()
+Elements = dfF.ELEMENT.unique()
 Elements = pd.DataFrame(Elements, columns=['AVAILABLE ELEMENTS'])
-Stations = df.drop_duplicates('STATION_ID')
+Stations = dfF.drop_duplicates('STATION_ID')
 Elements.reset_index(drop=True, inplace=True)
 Elements.index = Elements.index+1
 print ('*'*25)
@@ -293,22 +385,65 @@ for aItem in query:
         print ('System Exit')
         sys.exit()
 
-dfList = Stations['STATION_ID'].tolist()
 
-# Download daily file to csv 
+# Import outside of loop modifies list parsing in python
+# must remian in definition for this section only
+StationFilter2 = []
+def SecondFilter():
+    try:
+        import collections
+    except:
+        import pip
+        pip.main(['install','collections'])
+    import collections
+    from collections import Counter
 
+    df = dfF[dfF.ELEMENT.isin(element_list)]
+    # print df
+
+    StationID = df['STATION_ID'].tolist()
+    Count = collections.Counter(StationID)
+    Keys = copy.deepcopy(Count.keys())
+    Counts = copy.deepcopy(Count.values())
+    i = 0
+    for aItem in Counts:
+        if aItem>=len(element_list):
+            StationFilter2.append(Keys[i])
+        i = i+1
+    return StationFilter2
+
+SecondFilter()
+
+dfList = StationFilter2
+# print_full(dfList)
+df2 = pd.DataFrame(dfS, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'STATE', 'STATION_NAME', 'GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID'])
+df = df2[df2.STATION_ID.isin(StationFilter2)]
+df2 = df['STATE'].tolist()
+
+# Write Stations Location and additional information csv
+
+output_dir = os.path.relpath('Output/State_Province/')
+
+dfS = pd.DataFrame(dfS, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'STATE', 'STATION_NAME', 'GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID'])
+dfS.drop(columns=['GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID'])
+df = dfS[dfS.STATION_ID.isin(StationFilter2)]
+df_out = df.astype(str)
+df_out.to_csv(os.path.join(output_dir, 'StationInformation.csv'))
+
+# **********************************Download daily file to csv 
 ftp_path_dly = '/pub/data/ghcn/daily/'
 ftp_path_dly_all = '/pub/data/ghcn/daily/all/'
 ftp_filename = 'ghcnd-stations.txt'
-local_full_path = 'output/Country/ghcnd-stations.txt'
+local_full_path = 'Output/Country/ghcnd-stations.txt'
 
+# Write output folders for each state/province 
 for aItem in SP:
     CODE = aItem
-    output_dir = os.path.relpath('output/State_Province/%s' % (CODE))
+    output_dir = os.path.relpath('Output/State_Province/%s' % (CODE))
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
 
-output_dir = os.path.relpath('output/State_Province/')
+output_dir = os.path.relpath('Output/State_Province/')
 
 def connect_to_ftp():
     ftp_path_root = 'ftp.ncdc.noaa.gov'
@@ -359,18 +494,14 @@ def move_col_to_front(element, df):
     df = df.reindex(columns=cols)
     return df
  
-def dly_to_csv(ftp, station_id):    
+def dly_to_csv(ftp, station_id, State):   
     ftp_filename = station_id + '.dly'
-    Country_File = (station_id[0:2]+'/')
-
+    # Country_File = ('/'+station_id[0:2]+'/')
+    State_File = ('/'+State+'/')
     # Write .dly file to stream using StringIO using FTP command 'RETR'
     s = io.BytesIO()
     ftp.retrlines('RETR ' + ftp_path_dly_all + ftp_filename, s.write)
     s.seek(0)
-    
-    # Write .dly file to dir to preserve original # FIXME make optional?
-    # with open(os.path.join(output_dir, Country_File, ftp_filename), 'wb+') as f:
-    #     ftp.retrbinary('RETR ' + ftp_path_dly_all + ftp_filename, f.write)
     
     # Move to first char in file
     s.seek(0)
@@ -457,25 +588,27 @@ def dly_to_csv(ftp, station_id):
     '''
     # https://stackoverflow.com/a/40435354
     df_all = df_all.loc[:,~df_all.columns.duplicated()]
-    df_all = df_all.loc[df_all['ID'].notnull(), :]
 
     # Keep selected elements only
     Records = BaseColumns+element_list
-    # df = list(df_all.columns.values)
-    # E = [elem for elem in df if elem not in element_list ]
-    # print E
+
     try:
         df_all = df_all[Records]
         df_out = df_all.astype(str)
-        df_out.to_csv(os.path.join(output_dir, Country_File, station_id + '.csv'))
+        df_out.to_csv(os.path.join(output_dir+State_File+station_id + '.csv'))
     except:
         # print('Record Missing Element(s)')
         pass
 
+
+i = 0
 ftp = connect_to_ftp()
 for aItem in dfList:
     station_id = aItem
-    dly_to_csv(ftp, station_id)
+    # print aItem
+    State = df2[i] 
+    dly_to_csv(ftp, station_id, State)
+    i = i+1
 
 ftp.quit()
 sys.exit()

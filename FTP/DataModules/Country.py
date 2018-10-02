@@ -6,10 +6,18 @@ from ftplib import FTP
 import csv
 import io
 import numpy as np
-sys.path.append("output")
+import copy
+sys.path.append("Output")
+sys.path.append("TXT_FILES")
 
 # Write output directory
-output_dir = os.path.relpath('output/Country')
+output_dir = os.path.relpath('Output')
+if not os.path.isdir(output_dir):
+    os.mkdir(output_dir)
+output_dir = os.path.relpath('Output/Country')
+if not os.path.isdir(output_dir):
+    os.mkdir(output_dir)
+output_dir = os.path.relpath('TXT_FILES')
 if not os.path.isdir(output_dir):
     os.mkdir(output_dir)
 
@@ -21,7 +29,7 @@ def print_full(x):
 #************************************ DATA COVERAGE CHECK FTP
 ftp_path_dly = '/pub/data/ghcn/daily/'
 ftp_path_dly_all = '/pub/data/ghcn/daily/all/'
-local_full_path = 'output/Country/ghcnd-inventory.txt'
+local_full_path = 'TXT_FILES/ghcnd-inventory.txt'
 
 # This ftp definition is the first one to run, this is defined here and 
 # later. The reason is to run it whith the login message once. The second
@@ -96,7 +104,7 @@ def Inventory(ftp):
 
 ftp_path_dly = '/pub/data/ghcn/daily/'
 ftp_filename = 'ghcnd-countries.txt'
-local_full_path = 'output/Country/ghcnd-countries.txt'
+local_full_path = 'TXT_FILES/ghcnd-countries.txt'
 
 # Connects to the server for ftp download. This def prints the 
 # ftp connection message/warning.
@@ -246,7 +254,7 @@ if query == 'Y':
 
 # Filter check to ensure loops have gone through and data has parsed correctly
 if len(Filter2)==0 and len(Filter)==0:
-    print ('Error parsing data')
+    print ('Data Coverage For Defined Parameters Is Not Available')
     sys.exit()
 if len(Filter2)>0 and len(Filter)>0:
     print ('Error parsing data')
@@ -297,15 +305,58 @@ dfList = Stations['STATION_ID'].tolist()
 ftp_path_dly = '/pub/data/ghcn/daily/'
 ftp_path_dly_all = '/pub/data/ghcn/daily/all/'
 ftp_filename = 'ghcnd-stations.txt'
-local_full_path = 'output/Country/ghcnd-stations.txt'
+local_full_path = 'TXT_FILES/ghcnd-stations.txt'
 
 for aItem in Countries:
     CODE = aItem
-    output_dir = os.path.relpath('output/Country/%s' % (CODE))
+    output_dir = os.path.relpath('Output/Country/%s' % (CODE))
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
 
-output_dir = os.path.relpath('output/Country/')
+output_dir = os.path.relpath('Output/Country/')
+
+
+
+
+# Import outside of loop modifies list parsing in python
+# must remian in definition for this section only
+StationFilter2 = []
+def SecondFilter():
+    try:
+        import collections
+    except:
+        import pip
+        pip.main(['install','collections'])
+    import collections
+    from collections import Counter
+
+    dfF = df[df.ELEMENT.isin(element_list)]
+    # print df
+
+    StationID = dfF['STATION_ID'].tolist()
+    Count = collections.Counter(StationID)
+    Keys = copy.deepcopy(Count.keys())
+    Counts = copy.deepcopy(Count.values())
+    i = 0
+    for aItem in Counts:
+        if aItem>=len(element_list):
+            StationFilter2.append(Keys[i])
+        i = i+1
+    return StationFilter2
+
+SecondFilter()
+
+dfList = StationFilter2
+# Write Stations Location and additional information csv
+
+output_dir = os.path.relpath('Output/Country/')
+
+dfS = df[df.STATION_ID.isin(StationFilter2)]
+df_out = dfS.astype(str)
+df_out.to_csv(os.path.join(output_dir, 'StationInformation.csv'))
+
+sys.exit()
+
 
 def connect_to_ftp():
     ftp_path_root = 'ftp.ncdc.noaa.gov'
@@ -454,7 +505,7 @@ def dly_to_csv(ftp, station_id):
     '''
     # https://stackoverflow.com/a/40435354
     df_all = df_all.loc[:,~df_all.columns.duplicated()]
-    df_all = df_all.loc[df_all['ID'].notnull(), :]
+
 
     # Keep selected elements only
     Records = BaseColumns+element_list

@@ -37,8 +37,8 @@ if query==2:
 	Station_City
 
 if query==3:
-	print "Module missing or incomplete"
-	sys.exit()
+	import State_Province
+	State_Province
 
 if query==4:
 	print "Module missing or incomplete"
