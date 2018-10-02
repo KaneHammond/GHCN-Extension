@@ -366,24 +366,18 @@ Stations = dfF.drop_duplicates('STATION_ID')
 Elements.reset_index(drop=True, inplace=True)
 Elements.index = Elements.index+1
 print ('*'*25)
-print ('')
 print_full(Elements) 
+print ('')
 print ('Total Stations in Selection: %i' % (len(Stations.index)))
-print ('Specification of Elements May Reduce Total Stations\n')
-query = raw_input('Download Data (Y/N):')
-query = query.upper()
-for aItem in query:
-    if query=='Y':
-        print('Select Elements(ex. 001, 1):')
-        a = [str(x) for x in raw_input().upper().split(', ')]
-        element_list = []
-        for aItem in a:
-            aItem = int(aItem)
-            element_list.append(Elements.loc[aItem, 'AVAILABLE ELEMENTS'])
-        continue
-    else:
-        print ('System Exit')
-        sys.exit()
+print ('Specification of Elements May Reduce Total Stations')
+print ('*'*25)
+print('Select Elements(ex. 001, 1):')
+a = [str(x) for x in raw_input().upper().split(', ')]
+element_list = []
+for aItem in a:
+    aItem = int(aItem)
+    element_list.append(Elements.loc[aItem, 'AVAILABLE ELEMENTS'])
+
 
 
 # Import outside of loop modifies list parsing in python
@@ -415,6 +409,17 @@ def SecondFilter():
 SecondFilter()
 
 dfList = StationFilter2
+print ('*'*25)
+query = raw_input('%i Stations Have Coverage For Selected Filter.\nDownload Data? (Y/N):' % (len(dfList)))
+query = query.upper()
+print ('*'*25)
+for aItem in query:
+    if query=='Y':
+        continue
+    if query!='Y':
+        print ('Download Canceled')
+        sys.exit()
+
 # print_full(dfList)
 df2 = pd.DataFrame(dfS, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'STATE', 'STATION_NAME', 'GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID'])
 df = df2[df2.STATION_ID.isin(StationFilter2)]
@@ -600,6 +605,7 @@ def dly_to_csv(ftp, station_id, State):
         # print('Record Missing Element(s)')
         pass
 
+print ('Downloading Data')
 
 i = 0
 ftp = connect_to_ftp()

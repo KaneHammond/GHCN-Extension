@@ -6,9 +6,14 @@ import os
 import io
 import csv
 
-output_dir = os.path.relpath('output/Station')
+output_dir = os.path.relpath('Output')
 if not os.path.isdir(output_dir):
     os.mkdir(output_dir)
+
+output_dir = os.path.relpath('Output/Station')
+if not os.path.isdir(output_dir):
+    os.mkdir(output_dir)
+
 
 ftp_path_dly = '/pub/data/ghcn/daily/'
 ftp_path_dly_all = '/pub/data/ghcn/daily/all/'

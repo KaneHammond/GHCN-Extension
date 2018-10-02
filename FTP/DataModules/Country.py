@@ -279,44 +279,21 @@ Stations = df.drop_duplicates('STATION_ID')
 Elements.reset_index(drop=True, inplace=True)
 Elements.index = Elements.index+1
 print ('*'*25)
-print ('')
 print_full(Elements) 
+print ('')
 print ('Total Stations in Selection: %i' % (len(Stations.index)))
-print ('Specification of Elements May Reduce Total Stations\n')
-query = raw_input('Download Data (Y/N):')
-query = query.upper()
-for aItem in query:
-    if query=='Y':
-        print('Select Elements(ex. 001, 1):')
-        a = [str(x) for x in raw_input().upper().split(', ')]
-        element_list = []
-        for aItem in a:
-            aItem = int(aItem)
-            element_list.append(Elements.loc[aItem, 'AVAILABLE ELEMENTS'])
-        continue
-    else:
-        print ('System Exit')
-        sys.exit()
-
+print ('Specification of Elements May Reduce Total Stations')
+print ('*'*25)
+print('Select Elements(ex. 001, 1):')
+a = [str(x) for x in raw_input().upper().split(', ')]
+element_list = []
+for aItem in a:
+    aItem = int(aItem)
+    element_list.append(Elements.loc[aItem, 'AVAILABLE ELEMENTS'])
+# Write station list 
 dfList = Stations['STATION_ID'].tolist()
 
-# Download daily file to csv 
-
-ftp_path_dly = '/pub/data/ghcn/daily/'
-ftp_path_dly_all = '/pub/data/ghcn/daily/all/'
-ftp_filename = 'ghcnd-stations.txt'
-local_full_path = 'TXT_FILES/ghcnd-stations.txt'
-
-for aItem in Countries:
-    CODE = aItem
-    output_dir = os.path.relpath('Output/Country/%s' % (CODE))
-    if not os.path.isdir(output_dir):
-        os.mkdir(output_dir)
-
-output_dir = os.path.relpath('Output/Country/')
-
-
-
+# Write station coordinates file and prompt for download
 
 # Import outside of loop modifies list parsing in python
 # must remian in definition for this section only
@@ -337,6 +314,8 @@ def SecondFilter():
     Count = collections.Counter(StationID)
     Keys = copy.deepcopy(Count.keys())
     Counts = copy.deepcopy(Count.values())
+    # print Keys
+    # print Counts
     i = 0
     for aItem in Counts:
         if aItem>=len(element_list):
@@ -348,14 +327,40 @@ SecondFilter()
 
 dfList = StationFilter2
 # Write Stations Location and additional information csv
+print ('*'*25)
+query = raw_input('%i Stations Have Coverage For Selected Filter.\nDownload Data? (Y/N):' % (len(dfList)))
+query = query.upper()
+print ('*'*25)
+for aItem in query:
+    if query=='Y':
+        continue
+    if query!='Y':
+        print ('Download Canceled')
+        sys.exit()
 
 output_dir = os.path.relpath('Output/Country/')
-
+# WORK
 dfS = df[df.STATION_ID.isin(StationFilter2)]
+dfS = dfS.drop_duplicates('STATION_ID')
+dfS = dfS.drop(columns=['ELEMENT', 'FIRSTYEAR', 'LASTYEAR'])
 df_out = dfS.astype(str)
 df_out.to_csv(os.path.join(output_dir, 'StationInformation.csv'))
 
-sys.exit()
+
+# Download daily file to csv 
+
+ftp_path_dly = '/pub/data/ghcn/daily/'
+ftp_path_dly_all = '/pub/data/ghcn/daily/all/'
+ftp_filename = 'ghcnd-stations.txt'
+local_full_path = 'TXT_FILES/ghcnd-stations.txt'
+
+for aItem in Countries:
+    CODE = aItem
+    output_dir = os.path.relpath('Output/Country/%s' % (CODE))
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+
+output_dir = os.path.relpath('Output/Country/')
 
 
 def connect_to_ftp():
@@ -519,6 +524,8 @@ def dly_to_csv(ftp, station_id):
     except:
         # print('Record Missing Element(s)')
         pass
+
+print ('Downloading Data')
 
 ftp = connect_to_ftp()
 for aItem in dfList:
