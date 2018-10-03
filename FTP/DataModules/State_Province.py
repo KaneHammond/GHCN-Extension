@@ -420,19 +420,19 @@ for aItem in query:
         print ('Download Canceled')
         sys.exit()
 
-# print_full(dfList)
+# Order re-filtered stations with state codes so they match by index
 df2 = pd.DataFrame(dfS, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'STATE', 'STATION_NAME', 'GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID'])
-df = df2[df2.STATION_ID.isin(StationFilter2)]
+df = pd.DataFrame(StationFilter2, columns=['STATION_ID'])
+df = pd.merge(df, df2, how='inner', on='STATION_ID')
+df = df.drop(columns=['GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID'])
 df2 = df['STATE'].tolist()
-
+dfList = df['STATION_ID'].tolist()
 # Write Stations Location and additional information csv
 
 output_dir = os.path.relpath('Output/State_Province/')
 
-dfS = pd.DataFrame(dfS, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'STATE', 'STATION_NAME', 'GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID'])
-dfS.drop(columns=['GSN_FLAG', 'HCN_CRN_FLAG', 'WMO_ID'])
-df = dfS[dfS.STATION_ID.isin(StationFilter2)]
-df_out = df.astype(str)
+dfS = pd.DataFrame(df, columns=['COUNTRY_CODE', 'STATION_ID', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'STATE', 'STATION_NAME'])
+df_out = dfS.astype(str)
 df_out.to_csv(os.path.join(output_dir, 'StationInformation.csv'))
 
 # **********************************Download daily file to csv 
@@ -611,7 +611,6 @@ i = 0
 ftp = connect_to_ftp()
 for aItem in dfList:
     station_id = aItem
-    # print aItem
     State = df2[i] 
     dly_to_csv(ftp, station_id, State)
     i = i+1
